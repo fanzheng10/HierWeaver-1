@@ -37,7 +37,6 @@ class Cluster(object):
         self.padded = False
         # self.index=None
 
-
     def calculate_similarity(self, cluster2):
         '''
         calculate Jaccard similarity.
@@ -47,10 +46,11 @@ class Cluster(object):
         # jaccard index
         arr1, arr2 = self.binary, cluster2.binary
         both = np.dot(arr1, arr2)
-        either = len(arr1) - np.dot(1-arr1, 1-arr2)
+        either = len(arr1) - np.dot(1 - arr1, 1 - arr2)
         return 1.0 * both / either
 
-class ClusterGraph(nx.Graph): # inherit networkx digraph
+
+class ClusterGraph(nx.Graph):  # inherit networkx digraph
     '''
     Extending nx.Graph class, each node is a Cluster object
     '''
@@ -66,29 +66,28 @@ class ClusterGraph(nx.Graph): # inherit networkx digraph
         new_clusters = []
         new_mat = resolution_graph.nodes[resname_new]['matrix']
 
-        for i in range(new_mat.shape[0]): # c is a list of node indices
+        for i in range(new_mat.shape[0]):  # c is a list of node indices
             clu = Cluster(new_mat[i, :], self.graph['num_leaves'], new_resolution)
             # cluG.add_cluster(clu)
             new_clusters.append(clu)
-
 
         # compare c with all existing clusters in clusterGraph (maybe optimized in future)
         if len(self.nodes()) == 0:
             newnode = np.arange(0, len(new_clusters))
         else:
-            newnode = np.arange(max(self.nodes()) +1, max(self.nodes()) +1 + len(new_clusters))
+            newnode = np.arange(max(self.nodes()) + 1, max(self.nodes()) + 1 + len(new_clusters))
         resolution_graph.nodes[resname_new]['node_indices'] = newnode
 
         # compare against all other resolutions within range
         newedges = []
         for r in resolution_graph.neighbors(resname_new):
-            if r == resname_new: # itself
+            if r == resname_new:  # itself
                 continue
             r_node_ids = resolution_graph.nodes[r]['node_indices']
             rmat = resolution_graph.nodes[r]['matrix']
-            id_new, id_r= jaccard_matrix(new_mat, rmat, self.graph['sim_threshold'])
+            id_new, id_r = jaccard_matrix(new_mat, rmat, self.graph['sim_threshold'])
             if len(id_new) > 0:
-                id_new =  newnode[id_new]
+                id_new = newnode[id_new]
                 id_r = r_node_ids[id_r]
                 for i in range(len(id_new)):
                     newedges.append((id_new[i], id_r[i]))
@@ -102,7 +101,7 @@ class ClusterGraph(nx.Graph): # inherit networkx digraph
             ni = newnode[nci]
             if not ni in self.nodes:
                 self.add_node(ni)
-            self.nodes[ni]['data'] = nc # is it a pointer?
+            self.nodes[ni]['data'] = nc  # is it a pointer?
             # self.nodes[ni]['data'].index = ni
 
     def remove_clusters(self, k, coherence=0.5):
@@ -117,12 +116,12 @@ class ClusterGraph(nx.Graph): # inherit networkx digraph
         core_numbers = nx.core_number(self)
         for i, v in core_numbers.items():
             clust = self.nodes[i]['data']
-            if clust.padded and v < coherence*k:
+            if clust.padded and v < coherence * k:
                 nodes_to_remove.append(i)
         self.remove_nodes_from(nodes_to_remove)
 
 
-def jaccard_matrix(matA, matB, threshold=0.75, prefilter = False): # assume matA, matB are sorted
+def jaccard_matrix(matA, matB, threshold=0.75, prefilter=False):  # assume matA, matB are sorted
     '''
     calculate jaccard matrix between all pairs between two sets of clusters
     :param matA: scipy.sparse.csr_matrix, axis 0 for clusters, axis 1 for nodes in network
@@ -131,13 +130,13 @@ def jaccard_matrix(matA, matB, threshold=0.75, prefilter = False): # assume matA
     :param prefilter: pre-filter the pairs to compare with a lower bound (didn't seem to speed up much)
     :return: two sets of indices; the cluster pairs implied by those indices satisfied threshold
     '''
-    if prefilter: # does not have much speed advantage
+    if prefilter:  # does not have much speed advantage
         sizeA = np.ravel(np.asarray(np.sum(matA, axis=1)))
         sizeB = np.ravel(np.asarray(np.sum(matB, axis=1)))
         idA, idB = [], []
         for i in range(len(sizeA)):
             for j in range(len(sizeB)):
-                if 1.0 * min(sizeA[i], sizeB[j])/max(sizeA[i], sizeB[j]) < threshold:
+                if 1.0 * min(sizeA[i], sizeB[j]) / max(sizeA[i], sizeB[j]) < threshold:
                     continue
                 else:
                     idA.append(i)
@@ -150,7 +149,7 @@ def jaccard_matrix(matA, matB, threshold=0.75, prefilter = False): # assume matA
             both = np.sum(matAs.multiply(matBs), axis=1).ravel()
             either = matAs.getnnz(axis=1) + matBs.getnnz(axis=1) - both
             # print(both.shape, matAs.getnnz(axis=1).shape,matBs.getnnz(axis=1).shape, np.min(either))
-            jac = 1.0*both/either
+            jac = 1.0 * both / either
             small_index = np.where(jac > threshold)
             # print(small_index)
             real_index = (idA[small_index[1]], idB[small_index[1]])
@@ -160,8 +159,8 @@ def jaccard_matrix(matA, matB, threshold=0.75, prefilter = False): # assume matA
     else:
         both = matA.dot(matB.T)
 
-        either = (np.tile(matA.getnnz(axis=1), (matB.shape[0],1)) + matB.getnnz(axis=1)[:, np.newaxis]).T -both
-        jac = 1.0*both/either
+        either = (np.tile(matA.getnnz(axis=1), (matB.shape[0], 1)) + matB.getnnz(axis=1)[:, np.newaxis]).T - both
+        jac = 1.0 * both / either
         index = np.where(jac > threshold)
         return index
 
@@ -173,14 +172,15 @@ def run_alg(G, alg, gamma=1.0):
     :param gamma: resolution parameter
     :return: 
     '''
-    if alg =='louvain':
+    if alg == 'louvain':
         partition_type = louvain.RBConfigurationVertexPartition
         partition = louvain.find_partition(G, partition_type, resolution_parameter=gamma)
     elif alg == 'leiden':
         partition_type = leidenalg.RBConfigurationVertexPartition
-        partition = leidenalg.RBConfigurationVertexPartition(G, partition_type, resolution_parameter=gamma)
+        partition = leidenalg.find_partition(G, partition_type, resolution_parameter=gamma)
     # partition = sorted(partition, key=len, reverse=True)
     return partition
+
 
 def network_perturb(G, sample=0.8):
     '''
@@ -194,27 +194,40 @@ def network_perturb(G, sample=0.8):
     G1.delete_edges(edges_to_remove)
     return G1
 
-def partition_to_membership_matrix(partition, minsize=4):
+
+def partition_to_membership_matrix(partition, minsize=4, node_map = None):
     '''
     
     :param partition: class partition in the louvain-igraph package
     :param minsize: minimum size of clusters; smaller clusters will be deleted afterwards 
     :return: 
     '''
-    clusters = sorted([p for p in partition if len(p) >=minsize], key=len, reverse=True)
+    clusters = sorted([p for p in partition if len(p) >= minsize], key=len, reverse=True)
     row, col = [], []
-    for i in range(len(clusters)):
-        row.extend([i for _ in clusters[i]])
-        col.extend([x for x in clusters[i]])
-    row = np.array(row)
-    col = np.array(col)
-    data = np.ones_like(row, dtype=int)
-    C = sp.sparse.coo_matrix((data, (row, col)), shape=(len(clusters), partition.n)) # TODO: make it not dependent on partition.n
+    if node_map == None:
+        for i in range(len(clusters)):
+            row.extend([i for _ in clusters[i]])
+            col.extend([x for x in clusters[i]])
+        row = np.array(row)
+        col = np.array(col)
+        data = np.ones_like(row, dtype=int)
+        C = sp.sparse.coo_matrix((data, (row, col)),
+                                 shape=(len(clusters), partition.n))  # TODO: make it not dependent on partition.n
+    else:
+        for i in range(len(clusters)):
+            row.extend([i for _ in clusters[i]])
+            col.extend([node_map.index(x) for x in clusters[i]])
+        row = np.array(row)
+        col = np.array(col)
+        data = np.ones_like(row, dtype=int)
+        C = sp.sparse.coo_matrix((data, (row, col)),
+                               shape=(len(clusters), len(node_map)))
     C = C.tocsr()
     return C
 
 
-def update_resolution_graph(G, new_resolution, partition, value, neighborhood_size, neighbor_density_threshold):
+def update_resolution_graph(G, new_resolution, partition, value, neighborhood_size, neighbor_density_threshold,
+                            node_map=None):
     '''
     Update the "resolution graph", which connect resolutions that are close enough
     :param G: nx.Graph; the "resolution graph"
@@ -226,8 +239,9 @@ def update_resolution_graph(G, new_resolution, partition, value, neighborhood_si
     :return: 
     '''
     nodename = '{:.4f}'.format(new_resolution)
-    membership = partition_to_membership_matrix(partition)
-    G.add_node(nodename, resolution = new_resolution,
+    membership = partition_to_membership_matrix(partition,
+                                                node_map=node_map)
+    G.add_node(nodename, resolution=new_resolution,
                matrix=membership,
                padded=False, value=value)
     for v, vd in G.nodes(data=True):
@@ -243,6 +257,7 @@ def update_resolution_graph(G, new_resolution, partition, value, neighborhood_si
             G.nodes[v]['padded'] = True
     return newly_padded
 
+
 def collapse_cluster_graph(cluG, components, threshold=100):
     '''
     take the cluster graph and collapse each component based on some consensus metric
@@ -255,13 +270,15 @@ def collapse_cluster_graph(cluG, components, threshold=100):
         clusters = [cluG.nodes[v]['data'].binary for v in component]
         mat = np.stack(clusters)
         participate_index = np.mean(mat, axis=0)
-        threshold_met = participate_index *100 > threshold
+        threshold_met = participate_index * 100 > threshold
         threshold_met = threshold_met.astype(int)
         collapsed_clusters.append(threshold_met)
     return collapsed_clusters
 
+
 def run(G,
         density=0.1,
+        nodes=None,
         neighbors=10,
         jaccard=0.75,
         sample=0.9,
@@ -288,7 +305,16 @@ def run(G,
     min_diff_resolution = 0.001
 
     # G = ig.Graph.Read_Ncol(G)
-    G.simplify(multiple=False) # remove self loop but keep weight
+
+    G.simplify(multiple=False)  # remove self loop but keep weight
+    vertices = sorted(G.vs['name'])
+    node_mapping = None
+    if nodes != None:
+        node_mapping = [-1 for _ in range(len(nodes))]
+        for i, v in enumerate(nodes):
+            if v in vertices:
+                node_mapping[i] = vertices.index(v)
+
     cluG = ClusterGraph()
     cluG.graph['sim_threshold'] = jaccard
     cluG.graph['num_leaves'] = len(G.vs)
@@ -301,12 +327,12 @@ def run(G,
     LOGGER.timeit('_resrange')
     LOGGER.info('Finding maximum resolution...')
     if maxn != None:
-        next= True
+        next = True
         last_move = ''
         last_res = maxres
         maximum_while_loop = 20
         n_loop = 0
-        while next==True:
+        while next == True:
             test_partition = run_alg(G, alg, maxres)
             n_loop += 1
             if n_loop > maximum_while_loop:
@@ -314,20 +340,20 @@ def run(G,
                     'Reach upper limit of initial resolution searching, cannot get the target number of cluster. The input network may be incompatible with the specified number of clusters ...')
                 break
             # print(len(test_partition))
-            if len(test_partition) < 0.8*maxn:
+            if len(test_partition) < 0.8 * maxn:
                 if last_move == 'down':
-                    maxres = np.sqrt(maxres*last_res)
+                    maxres = np.sqrt(maxres * last_res)
                 else:
-                    maxres = maxres*2.0
+                    maxres = maxres * 2.0
                 last_move = 'up'
-            elif len(test_partition) > 1.2*maxn:
+            elif len(test_partition) > 1.2 * maxn:
                 if last_move == 'up':
-                    maxres = np.sqrt(maxres*last_res)
+                    maxres = np.sqrt(maxres * last_res)
                 else:
-                    maxres = maxres/2.0
+                    maxres = maxres / 2.0
                 last_move = 'down'
             else:
-                next=False
+                next = False
         maxres_partition = test_partition
     else:
         maxres_partition = run_alg(G, alg, maxres)
@@ -338,13 +364,14 @@ def run(G,
 
     # TODO: resolution graph won't be needed. will be able to perform all-to-all comparison
     update_resolution_graph(resolution_graph, minres, minres_partition,
-                            minres_partition.total_weight_in_all_comms(), density, neighbors)
+                            minres_partition.total_weight_in_all_comms(), density, neighbors,
+                            node_map=node_mapping)
     update_resolution_graph(resolution_graph, maxres, maxres_partition,
-                            maxres_partition.total_weight_in_all_comms(), density, neighbors)
+                            maxres_partition.total_weight_in_all_comms(), density, neighbors,
+                            node_map=node_mapping)
     cluG.add_clusters(resolution_graph, minres)
     cluG.add_clusters(resolution_graph, maxres)
     LOGGER.report('Resolution range initialized in %.2fs', '_resrange')
-
 
     LOGGER.timeit('_sample')
     while stack_res_range:
@@ -368,7 +395,7 @@ def run(G,
 
         stack_res_range.append((current_range[0], new_resolution))
         stack_res_range.append((new_resolution, current_range[1]))
-        if sample<1:
+        if sample < 1:
             G1 = network_perturb(G, sample)
             new_partition = run_alg(G1, alg, new_resolution)
         else:
@@ -376,7 +403,9 @@ def run(G,
 
         LOGGER.info('Resolution:' + resname_new + '; find {} clusters'.format(len(new_partition)))
 
-        _ = update_resolution_graph(resolution_graph, new_resolution, new_partition, new_partition.total_weight_in_all_comms(), density, neighbors)
+        _ = update_resolution_graph(resolution_graph, new_resolution, new_partition,
+                                    new_partition.total_weight_in_all_comms(), density, neighbors,
+                                    node_map = node_mapping)
 
         cluG.add_clusters(resolution_graph, new_resolution)
 
@@ -384,7 +413,8 @@ def run(G,
     LOGGER.report('Multiresolution Louvain clustering in %.2fs', '_sample')
     return cluG
 
-def consensus(cluG, k=5,  f=1.0, ct=100):
+
+def consensus(cluG, k=5, f=1.0, ct=100):
     '''
     create a more parsimonious results from the cluster graph
     :param cluG: the cluster graph
@@ -394,7 +424,7 @@ def consensus(cluG, k=5,  f=1.0, ct=100):
     :return: 
     '''
 
-    components = [c for c in nx.connected_components(cluG) if len(c)>= k]
+    components = [c for c in nx.connected_components(cluG) if len(c) >= k]
     components = sorted(components, key=len, reverse=True)
     components_new = []
     # use k-clique percolation to recalculate components
@@ -424,14 +454,15 @@ def consensus(cluG, k=5,  f=1.0, ct=100):
     ntaken = int(f * len(components))
     components = components[:ntaken]  #
 
-
     cluG_collapsed = collapse_cluster_graph(cluG, components, ct)
     len_components = [len(c) for c in components]
 
     cluG_collapsed_w_len = [(cluG_collapsed[i], len_components[i]) for i in range(len(cluG_collapsed))]
-    cluG_collapsed_w_len = sorted(cluG_collapsed_w_len, key=lambda x: np.sum(x[0]), reverse=True)  # sort by cluster size
+    cluG_collapsed_w_len = sorted(cluG_collapsed_w_len, key=lambda x: np.sum(x[0]),
+                                  reverse=True)  # sort by cluster size
 
     return cluG_collapsed_w_len
+
 
 def output_nodes(weaver, G, out, len_component):
     # internals = lambda T: (node for node in T if isinstance(node, tuple))
@@ -461,10 +492,11 @@ def output_nodes(weaver, G, out, len_component):
             cc = weaver_clusts[ci][1]
             cl = weaver_clusts[ci][2]
             fh.write(cn + '\t' + str(np.sum(cc)) + '\t' +
-                     ' '.join(sorted([G.vs[x]['name'] for x in np.where(cc)[0] ])) + '\t' + str(cl) + '\n')
+                     ' '.join(sorted([G.vs[x]['name'] for x in np.where(cc)[0]])) + '\t' + str(cl) + '\n')
     return
 
-def output_edges(weaver, G, out, leaf = False):
+
+def output_edges(weaver, G, out, leaf=False):
     '''
     
     :param weaver: 
@@ -475,7 +507,7 @@ def output_edges(weaver, G, out, leaf = False):
     '''
     # note this output is the 'forward' state
     # right now do not support node names as tuples
-    with open(out+ '.edges', 'w') as fh:
+    with open(out + '.edges', 'w') as fh:
         for e in weaver.hier.edges():
             parent = 'Cluster{}'.format(str(e[0][0]) + '-' + str(e[0][1]))
             if isinstance(e[1], tuple):
@@ -490,7 +522,6 @@ def output_edges(weaver, G, out, leaf = False):
 
 
 def output_gml(out):
-
     df_node = pd.read_csv(out + '.nodes', sep='\t', index_col=0, header=None)
     df_edge = pd.read_csv(out + '.edges', sep='\t', header=None)
     df_node.columns = ['Size', 'MemberList', 'Stability']
@@ -500,30 +531,41 @@ def output_gml(out):
     for c in df_node.columns:
         dic = df_node[c].to_dict()
         nx.set_node_attributes(G, dic, c)
-    nx.write_gml(G, out +'.gml')
-
+    nx.write_gml(G, out + '.gml')
 
 
 if __name__ == '__main__':
     par = argparse.ArgumentParser()
     par.add_argument('--g', required=True, help='A tab separated file for the input graph')
-    par.add_argument('--minres', type=float, default=0.001, help='Minimum resolution parameter') # cdaps not-expose
-    par.add_argument('--maxres', type=float, default=50.0, help='Maximum resolution parameter. Increase to get more smaller communities.') # Maximum resolution parameter
-    par.add_argument('--n', type=int, help= 'Target community number. Explore the maximum resolution parameter until the number of generated communities at this resolution is close enough to this value. Increase to get more smaller communities.') # Target community number
-    par.add_argument('--t', type=float, default=0.1, help='Sampling density. Inversed density of sampling the resolution parameter. Decrease to introduce more transient communities (will increase running time)') # cdaps not-expose
-    par.add_argument('--j', type=float, default=0.75, help='Similarity/containment threshold. A cutoff for creating the community ensemble graph and the containment graph') # cdaps not-expose
-    par.add_argument('--k', type=int, default = 5, help='Persistence threshold. Increase to delete unstable clusters, and get fewer communities') # Persistent threshold.
-    par.add_argument('--s', type=float, default=1.0, help='A subsample parameter') # cdaps not-expose
-    par.add_argument('--ct', default=75, type=int, help='Consensus threshold. Threshold of collapsing community graph and choose genes for each community.') # Consensus threshold.
+    par.add_argument('--nodes', help='if provided, nodes will be indexed according to this file. Nodes without any edge in the network will also be included')
+    par.add_argument('--minres', type=float, default=0.001, help='Minimum resolution parameter')  # cdaps not-expose
+    par.add_argument('--maxres', type=float, default=50.0,
+                     help='Maximum resolution parameter. Increase to get more smaller communities.')  # Maximum resolution parameter
+    par.add_argument('--n', type=int,
+                     help='Target community number. Explore the maximum resolution parameter until the number of generated communities at this resolution is close enough to this value. Increase to get more smaller communities.')  # Target community number
+    par.add_argument('--t', type=float, default=0.1,
+                     help='Sampling density. Inversed density of sampling the resolution parameter. Decrease to introduce more transient communities (will increase running time)')  # cdaps not-expose
+    par.add_argument('--j', type=float, default=0.75,
+                     help='Similarity/containment threshold. A cutoff for creating the community ensemble graph and the containment graph')  # cdaps not-expose
+    par.add_argument('--k', type=int, default=5,
+                     help='Persistence threshold. Increase to delete unstable clusters, and get fewer communities')  # Persistent threshold.
+    par.add_argument('--s', type=float, default=1.0, help='A subsample parameter')  # cdaps not-expose
+    par.add_argument('--ct', default=75, type=int,
+                     help='Consensus threshold. Threshold of collapsing community graph and choose genes for each community.')  # Consensus threshold.
     par.add_argument('--o', required=True, help='output file in ddot format')
-    par.add_argument('--alg', default='louvain', choices=['louvain', 'leiden'], help='add the option to use leiden algorithm')
+    par.add_argument('--alg', default='louvain', choices=['louvain', 'leiden'],
+                     help='add the option to use leiden algorithm')
     par.add_argument('--skipclug', action='store_true', help='If set, skips output of cluG file')
     par.add_argument('--skipgml', action='store_true', help='If set, skips output of gml file')
 
     args = par.parse_args()
 
+    nodes = None
+    if args.nodes != None:
+        nodes = [l.strip() for l in open(args.nodes).readlines()]
+
     G = ig.Graph.Read_Ncol(args.g)
-    G_component  = list(G.components(mode='WEAK'))
+    G_component = list(G.components(mode='WEAK'))
     if args.n != None:
         args.n = args.n + len(G_component) - 1
 
@@ -531,6 +573,7 @@ if __name__ == '__main__':
 
     cluG = run(G,
                density=args.t,
+               nodes=nodes,
                jaccard=args.j,
                sample=args.s,
                minres=args.minres,
@@ -539,7 +582,6 @@ if __name__ == '__main__':
                alg=args.alg
                )
     # # use weaver to organize them (due to the previous collapsed step, need to re-calculate containment index. This may be ok
-    # components = sorted(nx.connected_components(cluG), key=len, reverse=True)
     if args.skipclug is False:
         filename = args.o + '.cluG'
         outfile = open(filename, 'wb')
@@ -547,7 +589,7 @@ if __name__ == '__main__':
         outfile.close()
 
     LOGGER.timeit('_consensus')
-    cluG_collapsed_w_len = consensus(cluG, args.k, 1.0, args.ct) # have sorted by cluster size inside this function
+    cluG_collapsed_w_len = consensus(cluG, args.k, 1.0, args.ct)  # have sorted by cluster size inside this function
     cluG_collapsed = [x[0] for x in cluG_collapsed_w_len]
     len_component = [x[1] for x in cluG_collapsed_w_len]
     cluG_collapsed.insert(0, np.ones(len(cluG_collapsed[0]), ))
@@ -556,7 +598,7 @@ if __name__ == '__main__':
 
     weaver = weaver.Weaver()
     T = weaver.weave(cluG_collapsed, boolean=True, assume_levels=False,
-                     merge=True, cutoff=args.j) #
+                     merge=True, cutoff=args.j)  #
 
     output_nodes(weaver, G, args.o, len_component)
     output_edges(weaver, G, args.o)
