@@ -23,7 +23,7 @@ par = argparse.ArgumentParser()
 par.add_argument('--g', required=True, help='A tab separated file for the input graph')
 par.add_argument('--clugs', nargs='+', help='multiple cluG objects created by the hidef_finder.py script, provide in order')
 # par.add_argument('--neighbors', type=int, default=3, help='since it is expensive to pairwise compare everything, compare with neighbors in the order of files')
-par.add_argument('--precut', type=int, default=5, help='pre-remove small components from each cluG')
+par.add_argument('--precut', type=int, default=25, help='pre-remove small components from each cluG')
 par.add_argument('--out', required=True, help='prefix of output files')
 par.add_argument('--j', default=0.75, type=float, help='take this fraction of clusters')
 args = par.parse_args()
@@ -49,8 +49,7 @@ for i in range(len(clug_list)): # need to make sure every file have the same nod
 # concatenate all clusters, and calculate Jaccard
 
 mat = np.stack(cluster_long_list)
-matsp = sp.sparse.coo_matrix(mat, )
-matsp = matsp.tocsr()
+matsp = sp.sparse.csr_matrix(mat, )
 
 jacmat = jaccard_matrix(matsp, matsp)
 
@@ -86,8 +85,8 @@ T = weaver.weave(cluG_collapsed, boolean=True, assume_levels=False,
 
 G = ig.Graph.Read_Ncol(args.g)
 
-output_nodes(weaver, G, args.o, len_component)
-output_edges(weaver, G, args.o)
+output_nodes(weaver, G, args.out, len_components)
+output_edges(weaver, G, args.out)
 
 # write an auxiliary file; which file are members of an ensemble coming from
 with open(args.o +'_source_layer.txt', 'w') as fh:

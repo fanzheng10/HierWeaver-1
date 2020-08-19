@@ -278,7 +278,7 @@ def collapse_cluster_graph(cluG, components, threshold=100):
 
 def run(G,
         density=0.1,
-        nodes=None,
+        node_mapping=None,
         neighbors=10,
         jaccard=0.75,
         sample=0.9,
@@ -307,13 +307,6 @@ def run(G,
     # G = ig.Graph.Read_Ncol(G)
 
     G.simplify(multiple=False)  # remove self loop but keep weight
-    vertices = sorted(G.vs['name'])
-    node_mapping = None
-    if nodes != None:
-        node_mapping = [-1 for _ in range(len(nodes))]
-        for i, v in enumerate(nodes):
-            if v in vertices:
-                node_mapping[i] = vertices.index(v)
 
     cluG = ClusterGraph()
     cluG.graph['sim_threshold'] = jaccard
@@ -464,7 +457,8 @@ def consensus(cluG, k=5, f=1.0, ct=100):
     return cluG_collapsed_w_len
 
 
-def output_nodes(weaver, G, out, len_component):
+def output_nodes(weaver, G, out, len_component,
+                 node_mapping=None):
     # internals = lambda T: (node for node in T if isinstance(node, tuple))
     weaver_clusts = []
     for v, vdata in weaver.hier.nodes(data=True):
@@ -474,7 +468,10 @@ def output_nodes(weaver, G, out, len_component):
         name = 'Cluster{}-{}'.format(str(v[0]), str(v[1]))
         weaver_clusts.append([name, weaver._assignment[ind], len_component[ind]])
     weaver_clusts = sorted(weaver_clusts, key=lambda x: np.sum(x[1]), reverse=True)
-    # TODO: in this output, the gene assignment has not been propagated. so it is possible that children genes are not in parent gene
+
+    if node_mapping==None:
+        node_mapping = np.arange(len(G.vs))
+
     with open(out + '.nodes', 'w') as fh:
         # write parameter setting first
         # fh.write('# -f {}\n'.format(args.f))
@@ -492,11 +489,11 @@ def output_nodes(weaver, G, out, len_component):
             cc = weaver_clusts[ci][1]
             cl = weaver_clusts[ci][2]
             fh.write(cn + '\t' + str(np.sum(cc)) + '\t' +
-                     ' '.join(sorted([G.vs[x]['name'] for x in np.where(cc)[0]])) + '\t' + str(cl) + '\n')
+                     ' '.join(sorted([G.vs[node_mapping[x]]['name'] for x in np.where(cc)[0]])) + '\t' + str(cl) + '\n')
     return
 
 
-def output_edges(weaver, G, out, leaf=False):
+def output_edges(weaver, G, out, leaf=False, node_mapping=None):
     '''
     
     :param weaver: 
@@ -507,6 +504,8 @@ def output_edges(weaver, G, out, leaf=False):
     '''
     # note this output is the 'forward' state
     # right now do not support node names as tuples
+    if node_mapping==None:
+        node_mapping = np.arange(len(G.vs))
     with open(out + '.edges', 'w') as fh:
         for e in weaver.hier.edges():
             parent = 'Cluster{}'.format(str(e[0][0]) + '-' + str(e[0][1]))
@@ -514,11 +513,10 @@ def output_edges(weaver, G, out, leaf=False):
                 child = 'Cluster{}-{}'.format(str(e[1][0]), str(e[1][1]))
                 outstr = '{}\t{}\tdefault\n'.format(parent, child)
                 fh.write(outstr)
-            else:
-                child = G.vs[e[1]]['name']
-                if leaf:
-                    outstr = '{}\t{}\tgene\n'.format(parent, child)
-                    fh.write(outstr)
+            elif leaf:
+                child = G.vs[node_mapping[e[1]]]['name']
+                outstr = '{}\t{}\tgene\n'.format(parent, child)
+                fh.write(outstr)
 
 
 def output_gml(out):
@@ -569,11 +567,21 @@ if __name__ == '__main__':
     if args.n != None:
         args.n = args.n + len(G_component) - 1
 
+    vertices = sorted(G.vs['name'])
+    node_mapping = None
+    root_vec = np.zeros(len(nodes),)
+    if nodes != None:
+        node_mapping = [-1 for _ in range(len(nodes))]
+        for i, v in enumerate(nodes):
+            if v in vertices:
+                node_mapping[i] = vertices.index(v)
+                root_vec[i] = 1
+
     # explore the resolution parameter given the number of clusters
 
     cluG = run(G,
                density=args.t,
-               nodes=nodes,
+               node_mapping=node_mapping,
                jaccard=args.j,
                sample=args.s,
                minres=args.minres,
@@ -592,7 +600,7 @@ if __name__ == '__main__':
     cluG_collapsed_w_len = consensus(cluG, args.k, 1.0, args.ct)  # have sorted by cluster size inside this function
     cluG_collapsed = [x[0] for x in cluG_collapsed_w_len]
     len_component = [x[1] for x in cluG_collapsed_w_len]
-    cluG_collapsed.insert(0, np.ones(len(cluG_collapsed[0]), ))
+    cluG_collapsed.insert(0, root_vec)
     len_component.insert(0, 0)
     LOGGER.report('Processing cluster graph in %.2fs', '_consensus')
 
@@ -600,7 +608,8 @@ if __name__ == '__main__':
     T = weaver.weave(cluG_collapsed, boolean=True, assume_levels=False,
                      merge=True, cutoff=args.j)  #
 
-    output_nodes(weaver, G, args.o, len_component)
-    output_edges(weaver, G, args.o)
+    output_nodes(weaver, G, args.o, len_component,
+                 node_mapping=node_mapping)
+    output_edges(weaver, G, args.o, node_mapping=node_mapping)
     if args.skipgml is False:
         output_gml(args.o)
