@@ -276,7 +276,6 @@ class Weaver(object):
             if not G.has_node(nb):
                 G.add_node(nb, index=j, level=levels[j], label=labels[j])
 
-            # TODO: hope to collapse bi-directional edges
             if C >= cutoff:
                 if not merge:
                     if G.has_edge(na, nb):

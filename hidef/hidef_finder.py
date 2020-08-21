@@ -216,7 +216,7 @@ def partition_to_membership_matrix(partition, minsize=4, node_map = None):
     else:
         for i in range(len(clusters)):
             row.extend([i for _ in clusters[i]])
-            col.extend([node_map.index(x) for x in clusters[i]])
+            col.extend([node_map.index(x) for x in clusters[i]]) # this is wrong
         row = np.array(row)
         col = np.array(col)
         data = np.ones_like(row, dtype=int)
@@ -567,15 +567,15 @@ if __name__ == '__main__':
     if args.n != None:
         args.n = args.n + len(G_component) - 1
 
-    vertices = sorted(G.vs['name'])
+    # vertices = sorted(G.vs['name'])
     node_mapping = None
     root_vec = np.zeros(len(nodes),)
     if nodes != None:
         node_mapping = [-1 for _ in range(len(nodes))]
-        for i, v in enumerate(nodes):
-            if v in vertices:
-                node_mapping[i] = vertices.index(v)
-                root_vec[i] = 1
+        # node_mapping = {}
+        for i, v in enumerate(G.vs['name']):
+            node_mapping[nodes.index(v)] = i
+            root_vec[nodes.index(v)] = 1
 
     # explore the resolution parameter given the number of clusters
 
@@ -604,12 +604,12 @@ if __name__ == '__main__':
     len_component.insert(0, 0)
     LOGGER.report('Processing cluster graph in %.2fs', '_consensus')
 
-    weaver = weaver.Weaver()
-    T = weaver.weave(cluG_collapsed, boolean=True, assume_levels=False,
+    wver = weaver.Weaver()
+    T = wver.weave(cluG_collapsed, boolean=True, assume_levels=False,
                      merge=True, cutoff=args.j)  #
 
-    output_nodes(weaver, G, args.o, len_component,
+    output_nodes(wver, G, args.o, len_component,
                  node_mapping=node_mapping)
-    output_edges(weaver, G, args.o, node_mapping=node_mapping)
+    output_edges(wver, G, args.o, node_mapping=node_mapping)
     if args.skipgml is False:
         output_gml(args.o)
